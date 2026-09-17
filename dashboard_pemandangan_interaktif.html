@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pemandangan & Dynamic Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Poppins -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Poppins', 'sans-serif'],
+                    },
+                    colors: {
+                        glass: 'rgba(255, 255, 255, 0.15)',
+                        'glass-dark': 'rgba(15, 23, 42, 0.55)',
+                        'glass-border': 'rgba(255, 255, 255, 0.25)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            user-select: none;
+            overflow-x: hidden;
+        }
+
+        /* Smooth Background Fade Transition */
+        .bg-layer {
+            position: absolute;
+            inset: 0;
+            background-size: cover;
+            background-position: center;
+            transition: opacity 1.5s cubic-bezier(0.4, 0, 0.2, 1), transform 12s ease-out;
+            will-change: opacity, transform;
+        }
+
+        .bg-layer.active {
+            opacity: 1;
+            transform: scale(1.04);
+        }
+
+        .bg-layer.inactive {
+            opacity: 0;
+            transform: scale(1.0);
+        }
+
+        /* Glassmorphism Styles */
+        .glass-card {
+            background: rgba(18, 24, 38, 0.45);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+        }
+
+        .glass-button {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            transition: all 0.3s ease;
+        }
+
+        .glass-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Range Slider Styling */
+        input[type="range"] {
+            accent-color: #3b82f6;
+        }
+
+        /* Animated Audio Visualizer Bars */
+        .eq-bar {
+            transition: height 0.15s ease;
+        }
+    </style>
+</head>
+<body class="relative min-h-screen text-white overflow-hidden bg-slate-950 flex flex-col justify-between p-4 md:p-8">
+
+    <!-- Background Image Layers for Crossfade Effect -->
+    <div id="bg-container" class="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        <div id="bg1" class="bg-layer active"></div>
+        <div id="bg2" class="bg-layer inactive"></div>
+        <!-- Dark Overlay Gradient -->
+        <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-900/40 to-slate-950/60 z-10"></div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2"></div>
+
+    <!-- TOP NAVIGATION & HEADER -->
+    <header class="relative z-20 flex flex-wrap justify-between items-center gap-4 w-full max-w-7xl mx-auto">
+        <!-- Logo / Title -->
+        <div class="flex items-center gap-3 glass-card px-5 py-2.5 rounded-2xl">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-lg">
+                <i class="fa-solid me-0 fa-mountain-sun text-lg"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-base tracking-wide leading-tight">SereneSpace</h1>
+                <p class="text-xs text-slate-300">Pemandangan & Musik Santai</p>
+            </div>
+        </div>
+
+        <!-- Right Quick Controls -->
+        <div class="flex items-center gap-3">
+            <!-- Background Timer / Pause Switch -->
+            <button id="btn-toggle-slideshow" title="Jeda / Putar Slideshow Background" class="glass-button px-4 py-2 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-2">
+                <i id="slideshow-icon" class="fa-solid fa-pause text-blue-400"></i>
+                <span id="slideshow-text" class="hidden sm:inline">Ganti Otomatis</span>
+            </button>
+
+            <!-- Change Background Manual Button -->
+            <button id="btn-next-bg" title="Ganti Pemandangan Sekarang" class="glass-button p-2.5 px-3.5 rounded-xl text-sm flex items-center gap-2">
+                <i class="fa-solid fa-image"></i>
+                <span class="hidden sm:inline text-xs">Ubah Pemandangan</span>
+            </button>
+
+            <!-- Fullscreen Button -->
+            <button id="btn-fullscreen" title="Layar Penuh" class="glass-button w-10 h-10 rounded-xl flex items-center justify-center">
+                <i class="fa-solid fa-expand"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT DASHBOARD -->
+    <main class="relative z-20 w-full max-w-7xl mx-auto my-auto py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+
+        <!-- LEFT COLUMN: Big Clock & Ambient Greetings (5 cols) -->
+        <div class="lg:col-span-5 flex flex-col justify-center gap-6">
+            <!-- Main Hero Clock Box -->
+            <div class="glass-card p-6 sm:p-8 rounded-3xl relative overflow-hidden group">
+                <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                
+                <span id="greeting-badge" class="inline-block px-3 py-1 bg-blue-500/20 text-blue-300 text-xs font-semibold rounded-full mb-3 border border-blue-500/30">
+                    Selamat Hari ini
+                </span>
+                
+                <h2 id="digital-clock" class="text-5xl sm:text-7xl font-extrabold tracking-tight drop-shadow-md text-white font-mono">
+                    00:00:00
+                </h2>
+                
+                <p id="date-display" class="text-slate-300 text-sm sm:text-base mt-2 font-medium flex items-center gap-2">
+                    <i class="fa-regular fa-calendar text-blue-400"></i> Loading tanggal...
+                </p>
+
+                <!-- Current Landscape Location Badge -->
+                <div class="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-slate-300">
+                    <span class="flex items-center gap-2">
+                        <i class="fa-solid fa-location-dot text-rose-400"></i>
+                        <span id="bg-title">Lokasi: Pegunungan Alpine</span>
+                    </span>
+                    <span id="bg-counter" class="text-slate-400 font-mono">1 / 8</span>
+                </div>
+            </div>
+
+            <!-- Ambient Sound Generator Quick Panel -->
+            <div class="glass-card p-4 rounded-2xl flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                        <i class="fa-solid fa-cloud-rain"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-semibold">Suara Suasana Hujan</p>
+                        <p class="text-[10px] text-slate-400">Gunakan untuk fokus & tidur</p>
+                    </div>
+                </div>
+                <button id="btn-toggle-rain" class="glass-button px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-300 hover:bg-emerald-500/20">
+                    <i class="fa-solid fa-play me-1"></i> Putar Rain
+                </button>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: Calendar & MP3 Player (7 cols) -->
+        <div class="lg:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            <!-- MINI CALENDAR WIDGET -->
+            <div class="glass-card p-5 rounded-3xl flex flex-col justify-between">
+                <div>
+                    <!-- Calendar Header Navigation -->
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-calendar-days text-blue-400"></i>
+                            <h3 id="cal-month-year" class="font-semibold text-sm sm:text-base">Januari 2026</h3>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button id="cal-prev" class="w-7 h-7 rounded-lg glass-button flex items-center justify-center text-xs hover:text-blue-400">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </button>
+                            <button id="cal-today" class="px-2 py-1 rounded-lg glass-button text-[10px] font-semibold text-blue-300">
+                                Hari Ini
+                            </button>
+                            <button id="cal-next" class="w-7 h-7 rounded-lg glass-button flex items-center justify-center text-xs hover:text-blue-400">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Days of Week Header -->
+                    <div class="grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-slate-400 mb-2">
+                        <span class="text-rose-400">Min</span>
+                        <span>Sen</span>
+                        <span>Sel</span>
+                        <span>Rab</span>
+                        <span>Kam</span>
+                        <span>Jum</span>
+                        <span>Sab</span>
+                    </div>
+
+                    <!-- Calendar Days Grid -->
+                    <div id="cal-days" class="grid grid-cols-7 gap-1 text-center text-xs font-medium">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Mini Note Bar for Selected Date -->
+                <div class="mt-4 pt-3 border-t border-white/10">
+                    <div class="flex items-center justify-between text-xs mb-1">
+                        <span id="selected-date-label" class="text-slate-300 font-medium">Catatan Tanggal Ini:</span>
+                        <button id="btn-save-note" class="text-blue-400 hover:underline font-semibold text-[11px]">
+                            <i class="fa-solid fa-floppy-disk me-1"></i>Simpan
+                        </button>
+                    </div>
+                    <input type="text" id="date-note-input" placeholder="Tambah pengingat..." 
+                        class="w-full bg-slate-900/60 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-400">
+                </div>
+            </div>
+
+            <!-- MP3 MUSIC PLAYER WIDGET -->
+            <div class="glass-card p-5 rounded-3xl flex flex-col justify-between relative overflow-hidden">
+                <!-- Album Artwork / Visualizer Top Area -->
+                <div>
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                            <h3 class="font-semibold text-sm">MP3 Player</h3>
+                        </div>
+                        
+                        <!-- Upload Custom Audio Button -->
+                        <label title="Upload File MP3 Sendiri" class="cursor-pointer glass-button px-2.5 py-1 rounded-lg text-xs text-blue-300 flex items-center gap-1.5 hover:bg-blue-500/20">
+                            <i class="fa-solid fa-upload"></i>
+                            <span class="text-[11px]">Upload</span>
+                            <input type="file" id="audio-file-input" accept="audio/*" class="hidden">
+                        </label>
+                    </div>
+
+                    <!-- Current Song Banner & Artwork -->
+                    <div class="flex items-center gap-3 bg-slate-900/40 p-3 rounded-2xl border border-white/5 mb-3">
+                        <div id="track-art" class="w-12 h-12 rounded-xl bg-gradient-to-tr from-purple-600 to-blue-500 flex items-center justify-center text-white font-bold text-lg shadow-lg relative overflow-hidden shrink-0">
+                            <i id="track-icon" class="fa-solid fa-music"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p id="track-title" class="font-semibold text-xs sm:text-sm truncate">Lofi Chill Beats</p>
+                            <p id="track-artist" class="text-[11px] text-slate-400 truncate">Ambient Relax</p>
+                        </div>
+                    </div>
+
+                    <!-- Audio Frequency Visualizer Canvas -->
+                    <div class="w-full h-10 bg-slate-950/40 rounded-xl p-1 mb-3 flex items-center justify-center overflow-hidden border border-white/5 relative">
+                        <canvas id="visualizer-canvas" class="w-full h-full"></canvas>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="space-y-1">
+                        <input type="range" id="seek-slider" min="0" max="100" value="0" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                        <div class="flex justify-between text-[10px] text-slate-400 font-mono">
+                            <span id="current-time">0:00</span>
+                            <span id="duration-time">0:00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Player Controls -->
+                <div class="mt-3">
+                    <div class="flex items-center justify-center gap-4 mb-3">
+                        <button id="btn-prev-track" class="text-slate-300 hover:text-white transition text-sm">
+                            <i class="fa-solid fa-backward-step"></i>
+                        </button>
+                        <button id="btn-play-pause" class="w-11 h-11 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center shadow-lg transition transform hover:scale-105">
+                            <i id="play-icon" class="fa-solid fa-play ms-0.5"></i>
+                        </button>
+                        <button id="btn-next-track" class="text-slate-300 hover:text-white transition text-sm">
+                            <i class="fa-solid fa-forward-step"></i>
+                        </button>
+                    </div>
+
+                    <!-- Volume & Playlist Drawer Toggle -->
+                    <div class="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-white/10">
+                        <div class="flex items-center gap-2">
+                            <i id="volume-icon" class="fa-solid fa-volume-high text-slate-300 cursor-pointer"></i>
+                            <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.7" class="w-16 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                        </div>
+
+                        <button id="btn-toggle-playlist" class="text-blue-300 hover:underline flex items-center gap-1 text-[11px]">
+                            <i class="fa-solid fa-list-ul"></i> Playlist
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Hidden Audio Element -->
+                <audio id="main-audio" crossorigin="anonymous"></audio>
+
+                <!-- Playlist Overlay Drawer -->
+                <div id="playlist-drawer" class="absolute inset-0 bg-slate-950/95 backdrop-blur-xl p-4 transition-all duration-300 transform translate-y-full flex flex-col justify-between z-30">
+                    <div>
+                        <div class="flex items-center justify-between pb-2 mb-2 border-b border-white/10">
+                            <h4 class="font-semibold text-xs">Daftar Putar Musik</h4>
+                            <button id="btn-close-playlist" class="text-slate-400 hover:text-white text-sm">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                        <ul id="playlist-items" class="space-y-1.5 max-h-48 overflow-y-auto text-xs">
+                            <!-- Populated by JS -->
+                        </ul>
+                    </div>
+                    <p class="text-[10px] text-slate-500 text-center">Tips: Kamu dapat menambah musik dari file lokal milikmu.</p>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- FOOTER INFO -->
+    <footer class="relative z-20 w-full max-w-7xl mx-auto flex flex-wrap justify-between items-center text-xs text-slate-400 gap-2 pt-4 border-t border-white/10">
+        <p>© 2026 SereneSpace Dashboard. Didesain untuk ketenangan & produktivitas.</p>
+        <div class="flex items-center gap-4">
+            <span class="flex items-center gap-1.5"><i class="fa-solid fa-circle text-[8px] text-emerald-400"></i> Auto-Sync Off</span>
+            <span>Unsplash Landscapes</span>
+        </div>
+    </footer>
+
+    <script>
+        // ==========================================
+        // 1. LANDSCAPE BACKGROUND SWITCHER LOGIC
+        // ==========================================
+        const landscapes = [
+            {
+                title: "Pegunungan Swiss Alps",
+                url: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1920&q=80"
+            },
+            {
+                title: "Danau Cermin & Hutan Cendana",
+                url: "https://images.unsplash.com/photo-1511884642898-4c92249e20b6?auto=format&fit=crop&w=1920&q=80"
+            },
+            {
+                title: "Matahari Terbit Di Puncak Bromo",
+                url: "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?auto=format&fit=crop&w=1920&q=80"
+            },
+            {
+                title: "Pantai Lembayung Senja",
+                url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1920&q=80"
+            },
+            {
+                title: "Hutan Pinus Musim Gugur",
+                url: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1920&q=80"
+            },
+            {
+                title: "Lembah Hijau & Aurora Malam",
+                url: "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?auto=format&fit=crop&w=1920&q=80"
+            },
+            {
+                title: "Pesisir Karang Tropis",
+                url: "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1920&q=80"
+            }
+        ];
+
+        let currentBgIndex = 0;
+        let isSlideshowActive = true;
+        let bgInterval = null;
+        let activeLayer = 1; // 1 or 2
+
+        const bg1El = document.getElementById('bg1');
+        const bg2El = document.getElementById('bg2');
+        const bgTitleEl = document.getElementById('bg-title');
+        const bgCounterEl = document.getElementById('bg-counter');
+        const btnToggleSlideshow = document.getElementById('btn-toggle-slideshow');
+        const slideshowIcon = document.getElementById('slideshow-icon');
+        const slideshowText = document.getElementById('slideshow-text');
+        const btnNextBg = document.getElementById('btn-next-bg');
+
+        function setBackground(index) {
+            currentBgIndex = index;
+            const item = landscapes[currentBgIndex];
+
+            // Preload Image
+            const img = new Image();
+            img.src = item.url;
+            img.onload = () => {
+                if (activeLayer === 1) {
+                    bg2El.style.backgroundImage = `url('${item.url}')`;
+                    bg2El.classList.remove('inactive');
+                    bg2El.classList.add('active');
+                    bg1El.classList.remove('active');
+                    bg1El.classList.add('inactive');
+                    activeLayer = 2;
+                } else {
+                    bg1El.style.backgroundImage = `url('${item.url}')`;
+                    bg1El.classList.remove('inactive');
+                    bg1El.classList.add('active');
+                    bg2El.classList.remove('active');
+                    bg2El.classList.add('inactive');
+                    activeLayer = 1;
+                }
+            };
+
+            bgTitleEl.textContent = `Lokasi: ${item.title}`;
+            bgCounterEl.textContent = `${currentBgIndex + 1} / ${landscapes.length}`;
+        }
+
+        function nextBackground() {
+            const nextIdx = (currentBgIndex + 1) % landscapes.length;
+            setBackground(nextIdx);
+        }
+
+        function startSlideshow() {
+            if (bgInterval) clearInterval(bgInterval);
+            bgInterval = setInterval(() => {
+                if (isSlideshowActive) {
+                    nextBackground();
+                }
+            }, 8000); // Change image every 8 seconds
+        }
+
+        btnToggleSlideshow.addEventListener('click', () => {
+            isSlideshowActive = !isSlideshowActive;
+            if (isSlideshowActive) {
+                slideshowIcon.className = "fa-solid fa-pause text-blue-400";
+                slideshowText.textContent = "Ganti Otomatis";
+                showToast("Slideshow latar belakang diaktifkan");
+            } else {
+                slideshowIcon.className = "fa-solid fa-play text-slate-300";
+                slideshowText.textContent = "Jeda Auto";
+                showToast("Slideshow dihentikan sementara");
+            }
+        });
+
+        btnNextBg.addEventListener('click', () => {
+            nextBackground();
+        });
+
+        // Initialize First Background
+        bg1El.style.backgroundImage = `url('${landscapes[0].url}')`;
+        bgTitleEl.textContent = `Lokasi: ${landscapes[0].title}`;
+        startSlideshow();
+
+
+        // ==========================================
+        // 2. DIGITAL CLOCK & GREETINGS LOGIC
+        // ==========================================
+        const digitalClockEl = document.getElementById('digital-clock');
+        const dateDisplayEl = document.getElementById('date-display');
+        const greetingBadgeEl = document.getElementById('greeting-badge');
+
+        function updateClock() {
+            const now = new Date();
+            
+            // Format Time HH:MM:SS
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            digitalClockEl.textContent = `${hours}:${minutes}:${seconds}`;
+
+            // Format Date in Indonesian
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            dateDisplayEl.innerHTML = `<i class="fa-regular fa-calendar text-blue-400 me-2"></i> ${now.toLocaleDateString('id-ID', options)}`;
+
+            // Greetings Based on Hour
+            const currentHour = now.getHours();
+            let greeting = "Selamat Malam 🌙";
+            if (currentHour >= 5 && currentHour < 11) greeting = "Selamat Pagi 🌅";
+            else if (currentHour >= 11 && currentHour < 15) greeting = "Selamat Siang ☀️";
+            else if (currentHour >= 15 && currentHour < 18) greeting = "Selamat Sore 🌇";
+
+            greetingBadgeEl.textContent = greeting;
+        }
+
+        setInterval(updateClock, 1000);
+        updateClock();
+
+
+        // ==========================================
+        // 3. MINI CALENDAR INTERACTIVE LOGIC
+        // ==========================================
+        let calendarDate = new Date();
+        let selectedDateKey = null;
+
+        const calMonthYearEl = document.getElementById('cal-month-year');
+        const calDaysEl = document.getElementById('cal-days');
+        const calPrevBtn = document.getElementById('cal-prev');
+        const calNextBtn = document.getElementById('cal-next');
+        const calTodayBtn = document.getElementById('cal-today');
+        const dateNoteInput = document.getElementById('date-note-input');
+        const btnSaveNote = document.getElementById('btn-save-note');
+        const selectedDateLabel = document.getElementById('selected-date-label');
+
+        const monthNamesIndo = [
+            "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+            "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+        ];
+
+        // Notes storage in localStorage
+        function getSavedNotes() {
+            return JSON.parse(localStorage.getItem('serene_calendar_notes') || '{}');
+        }
+
+        function renderCalendar() {
+            calDaysEl.innerHTML = '';
+            const year = calendarDate.getFullYear();
+            const month = calendarDate.getMonth();
+
+            calMonthYearEl.textContent = `${monthNamesIndo[month]} ${year}`;
+
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            const lastDay = new Date(year, month + 1, 0).getDate();
+            const prevLastDay = new Date(year, month, 0).getDate();
+
+            const today = new Date();
+            const notes = getSavedNotes();
+
+            // Previous month tail days
+            for (let x = firstDayIndex; x > 0; x--) {
+                const dayNum = prevLastDay - x + 1;
+                const dayEl = document.createElement('div');
+                dayEl.className = 'py-2 text-slate-600 cursor-not-allowed text-[11px]';
+                dayEl.textContent = dayNum;
+                calDaysEl.appendChild(dayEl);
+            }
+
+            // Current month days
+            for (let i = 1; i <= lastDay; i++) {
+                const dayEl = document.createElement('div');
+                const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+
+                const isToday = i === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+                const isSelected = selectedDateKey === dateKey;
+                const hasNote = !!notes[dateKey];
+
+                let classes = "py-2 rounded-xl cursor-pointer transition relative text-xs flex flex-col items-center justify-center ";
+                
+                if (isSelected) {
+                    classes += "bg-blue-600 text-white font-bold shadow-md ";
+                } else if (isToday) {
+                    classes += "bg-blue-500/30 text-blue-300 font-bold border border-blue-400/50 ";
+                } else {
+                    classes += "hover:bg-white/10 text-slate-200 ";
+                }
+
+                dayEl.className = classes;
+                dayEl.textContent = i;
+
+                // Note Indicator Dot
+                if (hasNote) {
+                    const dot = document.createElement('span');
+                    dot.className = `w-1.5 h-1.5 rounded-full absolute bottom-1 ${isSelected ? 'bg-white' : 'bg-emerald-400'}`;
+                    dayEl.appendChild(dot);
+                }
+
+                dayEl.addEventListener('click', () => {
+                    selectedDateKey = dateKey;
+                    selectedDateLabel.textContent = `Catatan (${i} ${monthNamesIndo[month]}):`;
+                    dateNoteInput.value = notes[dateKey] || '';
+                    renderCalendar();
+                });
+
+                calDaysEl.appendChild(dayEl);
+            }
+
+            // Set default selection to today if none selected
+            if (!selectedDateKey) {
+                const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                selectedDateKey = todayKey;
+                selectedDateLabel.textContent = `Catatan (${today.getDate()} ${monthNamesIndo[today.getMonth()]}):`;
+                dateNoteInput.value = notes[todayKey] || '';
+            }
+        }
+
+        calPrevBtn.addEventListener('click', () => {
+            calendarDate.setMonth(calendarDate.getMonth() - 1);
+            renderCalendar();
+        });
+
+        calNextBtn.addEventListener('click', () => {
+            calendarDate.setMonth(calendarDate.getMonth() + 1);
+            renderCalendar();
+        });
+
+        calTodayBtn.addEventListener('click', () => {
+            calendarDate = new Date();
+            renderCalendar();
+        });
+
+        btnSaveNote.addEventListener('click', () => {
+            if (!selectedDateKey) return;
+            const notes = getSavedNotes();
+            const text = dateNoteInput.value.trim();
+            if (text) {
+                notes[selectedDateKey] = text;
+                showToast("Catatan tersimpan!");
+            } else {
+                delete notes[selectedDateKey];
+                showToast("Catatan dihapus");
+            }
+            localStorage.setItem('serene_calendar_notes', JSON.stringify(notes));
+            renderCalendar();
+        });
+
+        renderCalendar();
+
+
+        // ==========================================
+        // 4. MP3 PLAYER & VISUALIZER LOGIC
+        // ==========================================
+        const playlist = [
+            {
+                title: "Chill Lofi Ambient",
+                artist: "Serene Soundscape",
+                src: "https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3"
+            },
+            {
+                title: "Peaceful Forest Piano",
+                artist: "Acoustic Nature",
+                src: "https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=soft-notice-141838.mp3"
+            },
+            {
+                title: "Gentle Night Breeze",
+                artist: "Relaxation Waves",
+                src: "https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3?filename=relaxing-mountains-rivers-110243.mp3"
+            }
+        ];
+
+        let currentTrackIndex = 0;
+        let isPlaying = false;
+
+        const mainAudio = document.getElementById('main-audio');
+        const playPauseBtn = document.getElementById('btn-play-pause');
+        const playIcon = document.getElementById('play-icon');
+        const prevTrackBtn = document.getElementById('btn-prev-track');
+        const nextTrackBtn = document.getElementById('btn-next-track');
+        const trackTitleEl = document.getElementById('track-title');
+        const trackArtistEl = document.getElementById('track-artist');
+        const seekSlider = document.getElementById('seek-slider');
+        const currentTimeEl = document.getElementById('current-time');
+        const durationTimeEl = document.getElementById('duration-time');
+        const volumeSlider = document.getElementById('volume-slider');
+        const audioFileInput = document.getElementById('audio-file-input');
+        const playlistDrawer = document.getElementById('playlist-drawer');
+        const btnTogglePlaylist = document.getElementById('btn-toggle-playlist');
+        const btnClosePlaylist = document.getElementById('btn-close-playlist');
+        const playlistItemsEl = document.getElementById('playlist-items');
+
+        // Load Track
+        function loadTrack(index) {
+            currentTrackIndex = index;
+            const track = playlist[currentTrackIndex];
+            mainAudio.src = track.src;
+            trackTitleEl.textContent = track.title;
+            trackArtistEl.textContent = track.artist;
+            renderPlaylistUI();
+        }
+
+        function playAudio() {
+            mainAudio.play().then(() => {
+                isPlaying = true;
+                playIcon.className = "fa-solid fa-pause";
+                initAudioVisualizer();
+            }).catch(err => {
+                showToast("Gagal memutar lagu: Sertakan file audio lokal");
+            });
+        }
+
+        function pauseAudio() {
+            mainAudio.pause();
+            isPlaying = false;
+            playIcon.className = "fa-solid fa-play ms-0.5";
+        }
+
+        playPauseBtn.addEventListener('click', () => {
+            if (isPlaying) pauseAudio();
+            else playAudio();
+        });
+
+        prevTrackBtn.addEventListener('click', () => {
+            currentTrackIndex = (currentTrackIndex - 1 + playlist.length) % playlist.length;
+            loadTrack(currentTrackIndex);
+            playAudio();
+        });
+
+        nextTrackBtn.addEventListener('click', () => {
+            currentTrackIndex = (currentTrackIndex + 1) % playlist.length;
+            loadTrack(currentTrackIndex);
+            playAudio();
+        });
+
+        // Time updates & Seek
+        mainAudio.addEventListener('timeupdate', () => {
+            if (mainAudio.duration) {
+                const pct = (mainAudio.currentTime / mainAudio.duration) * 100;
+                seekSlider.value = pct;
+                currentTimeEl.textContent = formatTime(mainAudio.currentTime);
+                durationTimeEl.textContent = formatTime(mainAudio.duration);
+            }
+        });
+
+        seekSlider.addEventListener('input', () => {
+            if (mainAudio.duration) {
+                mainAudio.currentTime = (seekSlider.value / 100) * mainAudio.duration;
+            }
+        });
+
+        volumeSlider.addEventListener('input', (e) => {
+            mainAudio.volume = e.target.value;
+        });
+
+        // Track finished
+        mainAudio.addEventListener('ended', () => {
+            nextTrackBtn.click();
+        });
+
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return `${m}:${s < 10 ? '0' : ''}${s}`;
+        }
+
+        // Handle User File Upload
+        audioFileInput.addEventListener('change', (e) => {
+            const files = e.target.files;
+            if (files.length > 0) {
+                const file = files[0];
+                const fileUrl = URL.createObjectURL(file);
+                
+                const newTrack = {
+                    title: file.name.replace(/\.[^/.]+$/, ""),
+                    artist: "File Lokal MP3",
+                    src: fileUrl
+                };
+
+                playlist.unshift(newTrack);
+                loadTrack(0);
+                playAudio();
+                showToast(`Memutar: ${newTrack.title}`);
+            }
+        });
+
+        // Playlist Drawer UI Toggle
+        btnTogglePlaylist.addEventListener('click', () => {
+            playlistDrawer.classList.remove('translate-y-full');
+        });
+
+        btnClosePlaylist.addEventListener('click', () => {
+            playlistDrawer.classList.add('translate-y-full');
+        });
+
+        function renderPlaylistUI() {
+            playlistItemsEl.innerHTML = '';
+            playlist.forEach((item, i) => {
+                const li = document.createElement('li');
+                const isCurrent = i === currentTrackIndex;
+                li.className = `p-2 rounded-xl cursor-pointer flex items-center justify-between transition ${
+                    isCurrent ? 'bg-blue-600/40 text-blue-200 border border-blue-400/30' : 'hover:bg-white/10 text-slate-300'
+                }`;
+                li.innerHTML = `
+                    <div class="truncate max-w-[180px]">
+                        <p class="font-medium truncate text-xs">${item.title}</p>
+                        <p class="text-[10px] text-slate-400 truncate">${item.artist}</p>
+                    </div>
+                    ${isCurrent ? '<i class="fa-solid fa-volume-high text-blue-400 text-xs"></i>' : '<i class="fa-solid fa-play text-slate-500 text-[10px]"></i>'}
+                `;
+                li.addEventListener('click', () => {
+                    loadTrack(i);
+                    playAudio();
+                    playlistDrawer.classList.add('translate-y-full');
+                });
+                playlistItemsEl.appendChild(li);
+            });
+        }
+
+        loadTrack(0);
+
+
+        // Canvas Audio Visualizer Animation Loop
+        const canvas = document.getElementById('visualizer-canvas');
+        const ctx = canvas.getContext('2d');
+        let audioCtx, analyser, dataArray;
+
+        function initAudioVisualizer() {
+            if (audioCtx) return;
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+                analyser = audioCtx.createAnalyser();
+                const source = audioCtx.createMediaElementSource(mainAudio);
+                source.connect(analyser);
+                analyser.connect(audioCtx.destination);
+
+                analyser.fftSize = 64;
+                const bufferLength = analyser.frequencyBinCount;
+                dataArray = new Uint8Array(bufferLength);
+
+                drawVisualizer();
+            } catch (e) {
+                console.log("Audio visualizer unavailable");
+            }
+        }
+
+        function drawVisualizer() {
+            requestAnimationFrame(drawVisualizer);
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+
+            if (!analyser || !isPlaying) {
+                // Idle Static Wave Animation
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "rgba(59, 130, 246, 0.3)";
+                const numBars = 20;
+                const barWidth = canvas.width / numBars;
+                for (let i = 0; i < numBars; i++) {
+                    const h = Math.sin(Date.now() * 0.003 + i) * 8 + 10;
+                    ctx.fillRect(i * barWidth + 2, canvas.height - h, barWidth - 4, h);
+                }
+                return;
+            }
+
+            analyser.getByteFrequencyData(dataArray);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const barWidth = (canvas.width / dataArray.length) * 1.5;
+            let x = 0;
+
+            for (let i = 0; i < dataArray.length; i++) {
+                const barHeight = (dataArray[i] / 255) * canvas.height;
+                ctx.fillStyle = `rgba(59, 130, 246, ${0.4 + (barHeight / canvas.height)})`;
+                ctx.fillRect(x, canvas.height - barHeight, barWidth - 2, barHeight);
+                x += barWidth;
+            }
+        }
+
+        drawVisualizer();
+
+
+        // ==========================================
+        // 5. AMBIENT RAIN SOUND SYNTHESIZER
+        // ==========================================
+        let rainAudioCtx = null;
+        let rainNoiseNode = null;
+        let isRainPlaying = false;
+        const btnToggleRain = document.getElementById('btn-toggle-rain');
+
+        function toggleRainSound() {
+            if (isRainPlaying) {
+                if (rainAudioCtx) rainAudioCtx.suspend();
+                isRainPlaying = false;
+                btnToggleRain.innerHTML = `<i class="fa-solid fa-play me-1"></i> Putar Rain`;
+                btnToggleRain.classList.remove('bg-emerald-500/40');
+                showToast("Suara hujan dihentikan");
+            } else {
+                if (!rainAudioCtx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    rainAudioCtx = new AudioContext();
+
+                    // Generate Pink / Brown Noise for Rain Simulation
+                    const bufferSize = rainAudioCtx.sampleRate * 2;
+                    const noiseBuffer = rainAudioCtx.createBuffer(1, bufferSize, rainAudioCtx.sampleRate);
+                    const output = noiseBuffer.getChannelData(0);
+                    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+
+                    for (let i = 0; i < bufferSize; i++) {
+                        const white = Math.random() * 2 - 1;
+                        b0 = 0.99886 * b0 + white * 0.0555179;
+                        b1 = 0.99332 * b1 + white * 0.0750759;
+                        b2 = 0.96900 * b2 + white * 0.1538520;
+                        b3 = 0.86650 * b3 + white * 0.3104856;
+                        b4 = 0.55000 * b4 + white * 0.5329522;
+                        b5 = -0.7616 * b5 - white * 0.0168980;
+                        output[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+                        output[i] *= 0.11; 
+                        b6 = white * 0.115926;
+                    }
+
+                    const whiteNoise = rainAudioCtx.createBufferSource();
+                    whiteNoise.buffer = noiseBuffer;
+                    whiteNoise.loop = true;
+
+                    // Filter to create soft rain sound
+                    const filter = rainAudioCtx.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.frequency.value = 1000;
+
+                    whiteNoise.connect(filter);
+                    filter.connect(rainAudioCtx.destination);
+                    whiteNoise.start();
+                } else {
+                    rainAudioCtx.resume();
+                }
+                isRainPlaying = true;
+                btnToggleRain.innerHTML = `<i class="fa-solid fa-pause me-1"></i> Jeda Rain`;
+                btnToggleRain.classList.add('bg-emerald-500/40');
+                showToast("Suara hujan dinyalakan 🌧️");
+            }
+        }
+
+        btnToggleRain.addEventListener('click', toggleRainSound);
+
+
+        // ==========================================
+        // 6. UTILITIES (FULLSCREEN & TOAST)
+        // ==========================================
+        const btnFullscreen = document.getElementById('btn-fullscreen');
+
+        btnFullscreen.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        });
+
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'glass-card px-4 py-2.5 rounded-xl text-xs font-medium text-white flex items-center gap-2 shadow-2xl transition transform duration-300 translate-x-10 opacity-0';
+            toast.innerHTML = `<i class="fa-solid fa-circle-info text-blue-400"></i> ${message}`;
+            
+            container.appendChild(toast);
+
+            // Animate In
+            setTimeout(() => {
+                toast.classList.remove('translate-x-10', 'opacity-0');
+            }, 10);
+
+            // Remove after 3s
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-x-10');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Surga Alam - Pemandangan Interaktif</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,400&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif'],
+                    },
+                    colors: {
+                        glass: 'rgba(255, 255, 255, 0.15)',
+                        glassDark: 'rgba(15, 23, 42, 0.55)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow-x: hidden;
+            background-color: #0f172a;
+            color: #ffffff;
+        }
+
+        /* Glassmorphism effects */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .glass-button {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .glass-button:hover {
+            background: rgba(255, 255, 255, 0.28);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .glass-button:active {
+            transform: translateY(0);
+        }
+
+        /* Dual Background Layer Crossfade Animation */
+        .bg-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            transition: opacity 1.5s ease-in-out, transform 10s ease-out;
+            will-change: opacity, transform;
+        }
+
+        .bg-layer.zoom-effect {
+            transform: scale(1.05);
+        }
+
+        /* Custom Scrollbar for Drawer */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Pulse Progress Ring Animation */
+        @keyframes progressRing {
+            from { stroke-dashoffset: 100; }
+            to { stroke-dashoffset: 0; }
+        }
+
+        /* Fade UI hidden class */
+        .ui-element {
+            transition: opacity 0.5s ease, transform 0.5s ease, visibility 0.5s;
+        }
+
+        .ui-hidden {
+            opacity: 0 !important;
+            transform: translateY(10px) !important;
+            pointer-events: none !important;
+            visibility: hidden;
+        }
+    </style>
+</head>
+<body class="relative w-screen h-screen overflow-hidden select-none">
+
+    <!-- Background Image Layers for smooth cross-fading -->
+    <div id="bg-container" class="absolute inset-0 z-0 overflow-hidden bg-slate-950">
+        <div id="bg-layer-1" class="bg-layer opacity-100"></div>
+        <div id="bg-layer-2" class="bg-layer opacity-0"></div>
+        <!-- Vignette & Gradient Overlay for readability -->
+        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/40 pointer-events-none z-10"></div>
+    </div>
+
+    <!-- Main UI Container -->
+    <div class="relative z-20 flex flex-col justify-between w-full h-full p-4 md:p-8">
+        
+        <!-- Header Navigation Bar -->
+        <header class="ui-element flex justify-between items-center w-full max-w-7xl mx-auto">
+            <!-- Brand / Title -->
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-2xl glass-button flex items-center justify-center text-emerald-400 text-xl shadow-lg">
+                    <i class="fa-solid fa-mountain-sun"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold tracking-tight text-white font-serif">VistaNusa</h1>
+                    <p class="text-xs text-slate-300 font-light hidden sm:block">Keindahan Alam Tanpa Batas</p>
+                </div>
+            </div>
+
+            <!-- Top Right Controls -->
+            <div class="flex items-center space-x-2 md:space-x-3">
+                <!-- Sound Ambient Menu Button -->
+                <button id="btn-sound-menu" title="Suara Alam & Musik" onclick="toggleAudioPanel()" 
+                    class="glass-button px-3.5 py-2 rounded-xl text-sm flex items-center space-x-2 text-slate-200 hover:text-white">
+                    <i id="sound-icon" class="fa-solid fa-volume-xmark text-slate-400"></i>
+                    <span class="hidden sm:inline">Suara & Musik</span>
+                </button>
+
+                <!-- Edit & Manage Menu Button -->
+                <button id="btn-edit-menu" title="Kelola & Edit Content" onclick="toggleEditModal()" 
+                    class="glass-button px-3.5 py-2 rounded-xl text-sm flex items-center space-x-2 text-emerald-300 hover:text-white">
+                    <i class="fa-solid fa-pen-to-square text-emerald-400"></i>
+                    <span class="hidden sm:inline">Kelola</span>
+                </button>
+
+                <!-- Fullscreen / Focus Mode Button -->
+                <button title="Mode Zen / Layar Penuh" onclick="toggleFocusMode()" 
+                    class="glass-button p-2.5 rounded-xl text-slate-200 hover:text-white">
+                    <i class="fa-solid fa-expand text-lg"></i>
+                </button>
+
+                <!-- Info Drawer Toggle -->
+                <button title="Galeri Foto" onclick="toggleGalleryDrawer()" 
+                    class="glass-button px-3.5 py-2 rounded-xl text-sm flex items-center space-x-2 text-slate-200 hover:text-white">
+                    <i class="fa-solid fa-images"></i>
+                    <span class="hidden sm:inline">Galeri</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Center Dashboard Area -->
+        <main class="ui-element my-auto w-full max-w-3xl mx-auto flex flex-col items-center text-center space-y-6">
+            
+            <!-- Time & Greeting -->
+            <div class="space-y-1">
+                <p id="greeting-text" class="text-emerald-300 font-medium text-base md:text-lg tracking-wider uppercase font-sans">
+                    Selamat Datang
+                </p>
+                <h2 id="clock-display" class="text-5xl sm:text-7xl md:text-8xl font-extrabold tracking-tight text-white drop-shadow-md">
+                    00:00:00
+                </h2>
+                <p id="date-display" class="text-slate-200 text-sm md:text-base font-light tracking-wide">
+                    Senin, 1 Januari 2026
+                </p>
+            </div>
+
+            <!-- Search Bar Widget -->
+            <div class="w-full max-w-lg px-2">
+                <form id="search-form" onsubmit="handleSearch(event)" class="relative flex items-center">
+                    <div class="absolute left-4 text-slate-400 text-sm">
+                        <select id="search-engine" class="bg-transparent border-none text-slate-300 focus:outline-none cursor-pointer pr-1 text-xs">
+                            <option value="google" class="bg-slate-900 text-white">Google</option>
+                            <option value="youtube" class="bg-slate-900 text-white">YouTube</option>
+                            <option value="wikipedia" class="bg-slate-900 text-white">Wikipedia</option>
+                            <option value="bing" class="bg-slate-900 text-white">Bing</option>
+                        </select>
+                    </div>
+                    <input type="text" id="search-input" placeholder="Cari di web atau ketik URL..."
+                        class="w-full pl-28 pr-12 py-3.5 rounded-2xl glass-panel text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/50 transition-all shadow-inner">
+                    <button type="submit" class="absolute right-3 p-2 text-slate-300 hover:text-emerald-400 transition-colors">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Inspirational Quote Widget -->
+            <div class="glass-panel p-4 md:p-5 rounded-2xl max-w-xl w-full relative group">
+                <p id="quote-text" class="text-sm md:text-base italic text-slate-100 font-serif leading-relaxed">
+                    "Alam memberikan keindahan yang tak pernah habis untuk dinikmati."
+                </p>
+                <div class="mt-2 flex items-center justify-between text-xs text-slate-400">
+                    <span id="quote-author" class="font-medium text-emerald-300">— Anonim</span>
+                    <button onclick="generateRandomQuote()" title="Kutipan Baru" class="hover:text-white transition-colors p-1">
+                        <i class="fa-solid fa-rotate text-xs"></i> Kutipan Lain
+                    </button>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Bottom Controls Bar -->
+        <footer class="ui-element w-full max-w-7xl mx-auto">
+            <div class="glass-panel rounded-2xl p-3 md:p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+                
+                <!-- Category Filter Pills -->
+                <div class="flex items-center space-x-1.5 md:space-x-2 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 scrollbar-none" id="category-pills">
+                    <button onclick="setCategory('all')" data-cat="all" class="cat-btn active glass-button px-3 py-1.5 rounded-xl text-xs font-medium text-white bg-emerald-500/40 border-emerald-400">Semua</button>
+                    <button onclick="setCategory('mountain')" data-cat="mountain" class="cat-btn glass-button px-3 py-1.5 rounded-xl text-xs font-medium text-slate-200">Gunung</button>
+                    <button onclick="setCategory('beach')" data-cat="beach" class="cat-btn glass-button px-3 py-1.5 rounded-xl text-xs font-medium text-slate-200">Pantai</button>
+                    <button onclick="setCategory('forest')" data-cat="forest" class="cat-btn glass-button px-3 py-1.5 rounded-xl text-xs font-medium text-slate-200">Hutan</button>
+                    <button onclick="setCategory('sunset')" data-cat="sunset" class="cat-btn glass-button px-3 py-1.5 rounded-xl text-xs font-medium text-slate-200">Sunset</button>
+                    <button onclick="setCategory('lake')" data-cat="lake" class="cat-btn glass-button px-3 py-1.5 rounded-xl text-xs font-medium text-slate-200">Danau</button>
+                    <button onclick="setCategory('night')" data-cat="night" class="cat-btn glass-button px-3 py-1.5 rounded-xl text-xs font-medium text-slate-200">Malam</button>
+                </div>
+
+                <!-- Center Slideshow Control Buttons -->
+                <div class="flex items-center space-x-3 shrink-0">
+                    <!-- Previous Button -->
+                    <button onclick="prevImage()" title="Gambar Sebelumnya" class="glass-button w-9 h-9 rounded-xl flex items-center justify-center text-slate-200 hover:text-white">
+                        <i class="fa-solid fa-chevron-left text-xs"></i>
+                    </button>
+
+                    <!-- Play / Pause Button with Auto Progress Ring -->
+                    <button id="btn-play-pause" onclick="toggleAutoPlay()" title="Putar / Jeda Slideshow" class="glass-button w-10 h-10 rounded-xl flex items-center justify-center text-emerald-400 relative">
+                        <i id="play-icon" class="fa-solid fa-pause text-sm"></i>
+                    </button>
+
+                    <!-- Next Button -->
+                    <button onclick="nextImage()" title="Gambar Selanjutnya" class="glass-button w-9 h-9 rounded-xl flex items-center justify-center text-slate-200 hover:text-white">
+                        <i class="fa-solid fa-chevron-right text-xs"></i>
+                    </button>
+
+                    <!-- Speed Selector -->
+                    <select id="speed-selector" onchange="changeInterval(this.value)" class="glass-button px-2 py-2 rounded-xl text-xs text-slate-200 focus:outline-none cursor-pointer bg-slate-800/60 border-slate-600">
+                        <option value="3000">3s</option>
+                        <option value="5000" selected>5s</option>
+                        <option value="10000">10s</option>
+                        <option value="15000">15s</option>
+                    </select>
+                </div>
+
+                <!-- Current Location / Image Info -->
+                <div class="hidden lg:flex items-center space-x-3 text-right">
+                    <div class="text-xs">
+                        <p id="image-title" class="font-semibold text-white">Pegunungan Bromo</p>
+                        <p id="image-location" class="text-slate-300 text-[11px]"><i class="fa-solid fa-location-dot text-emerald-400 mr-1"></i>Jawa Timur, Indonesia</p>
+                    </div>
+                </div>
+
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- Restore UI Button (Visible when Zen/Focus Mode active) -->
+    <button id="btn-restore-ui" onclick="toggleFocusMode()" 
+        class="fixed bottom-6 right-6 z-30 glass-button p-3.5 rounded-full text-white shadow-2xl opacity-0 pointer-events-none transition-all duration-300 hover:scale-110">
+        <i class="fa-solid fa-eye text-lg"></i>
+    </button>
+
+    <!-- Sound Ambient Menu Modal / Popover -->
+    <div id="audio-panel" class="fixed top-20 right-4 md:right-8 z-30 w-80 md:w-88 glass-panel rounded-2xl p-5 hidden transition-all duration-300 shadow-2xl max-h-[85vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-4 pb-2 border-b border-white/10">
+            <h3 class="text-sm font-semibold text-white flex items-center space-x-2">
+                <i class="fa-solid fa-music text-emerald-400"></i>
+                <span>Suara Alam & Musik MP3</span>
+            </h3>
+            <button onclick="toggleAudioPanel()" class="text-slate-400 hover:text-white p-1">
+                <i class="fa-solid fa-xmark text-sm"></i>
+            </button>
+        </div>
+
+        <!-- Tab Audio Selector -->
+        <div class="flex border-b border-white/10 mb-4 text-xs font-medium">
+            <button id="tab-btn-ambient" onclick="switchAudioTab('ambient')" class="pb-2 px-3 border-b-2 border-emerald-400 text-emerald-300 font-semibold w-1/2 text-center">Suara Alam</button>
+            <button id="tab-btn-mp3" onclick="switchAudioTab('mp3')" class="pb-2 px-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200 w-1/2 text-center">Musik MP3 Saya</button>
+        </div>
+
+        <!-- Ambient Synthesizer Sounds Container -->
+        <div id="ambient-audio-container" class="space-y-4">
+            <!-- Rain Sound -->
+            <div class="space-y-1">
+                <div class="flex justify-between text-xs">
+                    <span class="text-slate-200"><i class="fa-solid fa-cloud-showers-heavy text-blue-400 w-5"></i> Suara Hujan</span>
+                    <span id="rain-vol-label" class="text-slate-400">Mati</span>
+                </div>
+                <input type="range" id="vol-rain" min="0" max="100" value="0" oninput="updateAudioVolume('rain', this.value)" 
+                    class="w-full accent-emerald-400 h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+            </div>
+
+            <!-- Sea Waves Sound -->
+            <div class="space-y-1">
+                <div class="flex justify-between text-xs">
+                    <span class="text-slate-200"><i class="fa-solid fa-water text-cyan-400 w-5"></i> Ombak Laut</span>
+                    <span id="waves-vol-label" class="text-slate-400">Mati</span>
+                </div>
+                <input type="range" id="vol-waves" min="0" max="100" value="0" oninput="updateAudioVolume('waves', this.value)" 
+                    class="w-full accent-emerald-400 h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+            </div>
+
+            <!-- Wind Sound -->
+            <div class="space-y-1">
+                <div class="flex justify-between text-xs">
+                    <span class="text-slate-200"><i class="fa-solid fa-wind text-teal-300 w-5"></i> Angin Hutan</span>
+                    <span id="wind-vol-label" class="text-slate-400">Mati</span>
+                </div>
+                <input type="range" id="vol-wind" min="0" max="100" value="0" oninput="updateAudioVolume('wind', this.value)" 
+                    class="w-full accent-emerald-400 h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+            </div>
+
+            <!-- Fireplace Sound -->
+            <div class="space-y-1">
+                <div class="flex justify-between text-xs">
+                    <span class="text-slate-200"><i class="fa-solid fa-fire text-amber-500 w-5"></i> Api Unggun</span>
+                    <span id="fire-vol-label" class="text-slate-400">Mati</span>
+                </div>
+                <input type="range" id="vol-fire" min="0" max="100" value="0" oninput="updateAudioVolume('fire', this.value)" 
+                    class="w-full accent-emerald-400 h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-white/10 flex justify-between items-center text-[11px] text-slate-400">
+                <span>Dihasilkan Sintetis (Web Audio)</span>
+                <button onclick="stopAllAudio()" class="text-rose-400 hover:text-rose-300">Matikan Semua</button>
+            </div>
+        </div>
+
+        <!-- Custom MP3 Player Container -->
+        <div id="mp3-audio-container" class="hidden space-y-4">
+            <!-- Active Playing Track Display -->
+            <div class="glass-panel p-3 rounded-xl bg-slate-900/60 border border-emerald-500/30">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                        <i id="mp3-playing-disc" class="fa-solid fa-compact-disc text-xl"></i>
+                    </div>
+                    <div class="overflow-hidden flex-grow">
+                        <p id="mp3-title-display" class="text-xs font-semibold text-white truncate">Belum ada lagu diputar</p>
+                        <p id="mp3-status-display" class="text-[10px] text-slate-400">Silakan pilih atau unggah MP3</p>
+                    </div>
+                </div>
+
+                <!-- MP3 Controls -->
+                <div class="mt-3 flex items-center justify-between">
+                    <button onclick="playPrevMp3()" class="text-slate-300 hover:text-white p-1 text-xs">
+                        <i class="fa-solid fa-backward-step"></i>
+                    </button>
+                    <button id="btn-play-mp3" onclick="togglePlayMp3()" class="w-8 h-8 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center hover:scale-105 transition-transform">
+                        <i id="mp3-play-icon" class="fa-solid fa-play text-xs"></i>
+                    </button>
+                    <button onclick="playNextMp3()" class="text-slate-300 hover:text-white p-1 text-xs">
+                        <i class="fa-solid fa-forward-step"></i>
+                    </button>
+                </div>
+
+                <!-- MP3 Volume Slider -->
+                <div class="mt-2 flex items-center space-x-2">
+                    <i class="fa-solid fa-volume-low text-[10px] text-slate-400"></i>
+                    <input type="range" id="mp3-volume" min="0" max="100" value="80" oninput="changeMp3Volume(this.value)"
+                        class="w-full accent-emerald-400 h-1 bg-slate-700 rounded-lg cursor-pointer">
+                    <i class="fa-solid fa-volume-high text-[10px] text-slate-400"></i>
+                </div>
+            </div>
+
+            <!-- Upload MP3 Shortcut -->
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-200">Daftar Lagu MP3</span>
+                <button onclick="openEditModalTab('mp3')" class="text-xs text-emerald-400 hover:underline flex items-center space-x-1">
+                    <i class="fa-solid fa-plus text-[10px]"></i>
+                    <span>Tambah MP3</span>
+                </button>
+            </div>
+
+            <!-- Playlist List -->
+            <div id="mp3-playlist" class="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                <!-- Dynamically Populated -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Edit Content Management Modal -->
+    <div id="edit-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md hidden p-4">
+        <div class="glass-panel w-full max-w-2xl rounded-3xl p-6 relative flex flex-col max-h-[90vh] shadow-2xl border border-white/20">
+            
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-4 border-b border-white/10">
+                <div class="flex items-center space-x-3">
+                    <div class="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                        <i class="fa-solid fa-sliders text-base"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-white text-lg font-serif">Kelola Konten Website</h3>
+                        <p class="text-xs text-slate-400">Atur kutipan, gambar latar, dan lagu MP3 Anda sendiri</p>
+                    </div>
+                </div>
+                <button onclick="toggleEditModal()" class="glass-button w-8 h-8 rounded-full flex items-center justify-center text-slate-300 hover:text-white">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Modal Navigation Tabs -->
+            <div class="flex border-b border-white/10 mt-4 text-sm font-medium space-x-4">
+                <button id="modal-tab-quotes" onclick="switchModalTab('quotes')" class="pb-2.5 border-b-2 border-emerald-400 text-emerald-300 font-semibold flex items-center space-x-2">
+                    <i class="fa-solid fa-quote-left"></i>
+                    <span>Kutipan</span>
+                </button>
+                <button id="modal-tab-images" onclick="switchModalTab('images')" class="pb-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-2">
+                    <i class="fa-solid fa-image"></i>
+                    <span>Gambar Latar</span>
+                </button>
+                <button id="modal-tab-mp3" onclick="switchModalTab('mp3')" class="pb-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-2">
+                    <i class="fa-solid fa-music"></i>
+                    <span>Lagu MP3</span>
+                </button>
+            </div>
+
+            <!-- Tab Content Area -->
+            <div class="py-4 overflow-y-auto flex-grow space-y-6 pr-1">
+
+                <!-- 1. QUOTES MANAGEMENT -->
+                <div id="modal-section-quotes" class="space-y-4">
+                    <!-- Add Quote Form -->
+                    <form onsubmit="handleAddNewQuote(event)" class="glass-panel p-4 rounded-2xl bg-slate-900/40 space-y-3 border border-white/10">
+                        <h4 class="text-xs font-semibold uppercase tracking-wider text-emerald-300"><i class="fa-solid fa-plus-circle mr-1"></i>Tambah Kutipan Baru</h4>
+                        <div class="space-y-2">
+                            <textarea id="input-quote-text" required placeholder="Tuliskan kata-kata mutiara atau kutipan bijak..." 
+                                class="w-full p-3 rounded-xl bg-slate-950/80 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400 border border-white/10 resize-none h-20"></textarea>
+                            <input type="text" id="input-quote-author" required placeholder="Nama Tokoh / Pengarang (cth: Albert Einstein)" 
+                                class="w-full p-2.5 rounded-xl bg-slate-950/80 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400 border border-white/10">
+                        </div>
+                        <button type="submit" class="glass-button w-full py-2.5 rounded-xl text-xs font-semibold text-emerald-300 hover:bg-emerald-500/20 flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-check"></i>
+                            <span>Simpan Kutipan</span>
+                        </button>
+                    </form>
+
+                    <!-- Quotes List -->
+                    <div class="space-y-2">
+                        <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Daftar Kutipan Tersedia</h4>
+                        <div id="quotes-list-container" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. IMAGES MANAGEMENT -->
+                <div id="modal-section-images" class="hidden space-y-4">
+                    <!-- Add Image Form -->
+                    <form onsubmit="handleAddNewImage(event)" class="glass-panel p-4 rounded-2xl bg-slate-900/40 space-y-3 border border-white/10">
+                        <h4 class="text-xs font-semibold uppercase tracking-wider text-emerald-300"><i class="fa-solid fa-plus-circle mr-1"></i>Tambah Gambar Pemandangan Baru</h4>
+                        
+                        <!-- Upload Mode Toggle (File / URL) -->
+                        <div class="flex space-x-2 text-xs">
+                            <button type="button" id="img-source-file-btn" onclick="setImageSourceType('file')" class="px-3 py-1.5 rounded-lg bg-emerald-500/30 text-emerald-300 font-medium">Unggah File</button>
+                            <button type="button" id="img-source-url-btn" onclick="setImageSourceType('url')" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400 font-medium">Tautan URL</button>
+                        </div>
+
+                        <!-- Image File Input -->
+                        <div id="img-file-input-wrapper" class="space-y-1">
+                            <label class="block text-xs text-slate-300">Pilih File Gambar (PNG, JPG, WEBP):</label>
+                            <input type="file" id="input-img-file" accept="image/*" onchange="previewSelectedImageFile(event)"
+                                class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-500/20 file:text-emerald-300 hover:file:bg-emerald-500/30 cursor-pointer">
+                        </div>
+
+                        <!-- Image URL Input -->
+                        <div id="img-url-input-wrapper" class="hidden space-y-1">
+                            <label class="block text-xs text-slate-300">URL Gambar Web:</label>
+                            <input type="url" id="input-img-url" placeholder="https://images.unsplash.com/photo-..." 
+                                class="w-full p-2.5 rounded-xl bg-slate-950/80 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400 border border-white/10">
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <input type="text" id="input-img-title" required placeholder="Judul Pemandangan" 
+                                class="w-full p-2.5 rounded-xl bg-slate-950/80 text-white placeholder-slate-500 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400 border border-white/10">
+                            <input type="text" id="input-img-location" required placeholder="Lokasi (cth: Bali, Indonesia)" 
+                                class="w-full p-2.5 rounded-xl bg-slate-950/80 text-white placeholder-slate-500 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400 border border-white/10">
+                            <select id="input-img-category" class="w-full p-2.5 rounded-xl bg-slate-950/80 text-white text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400 border border-white/10">
+                                <option value="mountain">Gunung</option>
+                                <option value="beach">Pantai</option>
+                                <option value="forest">Hutan</option>
+                                <option value="sunset">Sunset</option>
+                                <option value="lake">Danau</option>
+                                <option value="night">Malam</option>
+                            </select>
+                        </div>
+
+                        <button type="submit" class="glass-button w-full py-2.5 rounded-xl text-xs font-semibold text-emerald-300 hover:bg-emerald-500/20 flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                            <span>Tambahkan Gambar</span>
+                        </button>
+                    </form>
+
+                    <!-- Images List -->
+                    <div class="space-y-2">
+                        <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Koleksi Gambar Lengkap</h4>
+                        <div id="images-list-container" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. MP3 AUDIO MANAGEMENT -->
+                <div id="modal-section-mp3" class="hidden space-y-4">
+                    <!-- Upload MP3 Form -->
+                    <div class="glass-panel p-4 rounded-2xl bg-slate-900/40 space-y-3 border border-white/10">
+                        <h4 class="text-xs font-semibold uppercase tracking-wider text-emerald-300"><i class="fa-solid fa-upload mr-1"></i>Unggah Musik / Lagu MP3 Anda</h4>
+                        <p class="text-xs text-slate-400">Pilih satu atau beberapa file musik MP3 dari komputer atau perangkat smartphone Anda.</p>
+                        
+                        <div class="border-2 border-dashed border-emerald-500/40 rounded-2xl p-6 text-center hover:bg-emerald-500/5 transition-colors cursor-pointer" onclick="document.getElementById('input-mp3-files').click()">
+                            <i class="fa-solid fa-file-audio text-3xl text-emerald-400 mb-2"></i>
+                            <p class="text-xs font-semibold text-slate-200">Klik untuk memilih file MP3</p>
+                            <p class="text-[10px] text-slate-400 mt-1">Mendukung format MP3, WAV, OGG, M4A</p>
+                            <input type="file" id="input-mp3-files" accept="audio/*" multiple onchange="handleMp3FilesUpload(event)" class="hidden">
+                        </div>
+                    </div>
+
+                    <!-- Uploaded MP3 Songs List -->
+                    <div class="space-y-2">
+                        <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Daftar Musik Tersimpan</h4>
+                        <div id="mp3-modal-list-container" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Gallery Modal / Drawer -->
+    <div id="gallery-drawer" class="fixed inset-y-0 right-0 z-40 w-full sm:w-96 glass-panel translate-x-full transition-transform duration-300 ease-in-out p-6 flex flex-col shadow-2xl">
+        <div class="flex items-center justify-between pb-4 border-b border-white/10">
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-border-all text-emerald-400"></i>
+                <h3 class="font-bold text-white text-lg">Koleksi Pemandangan</h3>
+            </div>
+            <button onclick="toggleGalleryDrawer()" class="glass-button w-8 h-8 rounded-full flex items-center justify-center text-slate-300 hover:text-white">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <!-- Thumbnail Grid -->
+        <div id="gallery-grid" class="grid grid-cols-2 gap-3 my-4 overflow-y-auto pr-1 flex-grow">
+            <!-- Dynamically populated via JS -->
+        </div>
+
+        <div class="pt-3 border-t border-white/10 text-center text-xs text-slate-400">
+            Pilih gambar untuk langsung menerapkannya
+        </div>
+    </div>
+
+    <script>
+        /* Landscape Image Collection Database */
+        let landscapes = [
+            {
+                id: 1,
+                title: "Gunung Bromo Tengger",
+                location: "Jawa Timur, Indonesia",
+                category: "mountain",
+                url: "https://images.unsplash.com/photo-1588668214407-6ea9a6d8c272?auto=format&fit=crop&w=1920&q=80"
+            },
+            {
+                id: 2,
+                title: "Pantai Nusa Penida",
+                location: "Bali, Indonesia",
+                category: "beach",
+                url: "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=1920&q=80"
+            },
+            {
+                id: 3,
+                title: "Danau Toba Megah",
+                location: "Sumatera Utara, Indonesia",
+                category: "lake",
+                url: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1920&q=80"
+            },
+            {
+                id: 4,
+                title: "Hutan Pinus Asri",
+                location: "Yogyakarta, Indonesia",
+                category: "forest",
+                url: "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1920&q=80"
+            },
+            {
+                id: 5,
+                title: "Sunset Keemasan Horizon",
+                location: "Raja Ampat, Papua",
+                category: "sunset",
+                url: "https://images.unsplash.com/photo-1495616811223-4d98c6e9c869?auto=format&fit=crop&w=1920&q=80"
+            },
+            {
+                id: 6,
+                title: "Malam Berbintang & Milky Way",
+                location: "Taman Nasional Gunung Gede",
+                category: "night",
+                url: "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=1920&q=80"
+            },
+            {
+                id: 7,
+                title: "Pegunungan Alpina & Lembah",
+                location: "Swis / Pegunungan Eropa",
+                category: "mountain",
+                url: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1920&q=80"
+            },
+            {
+                id: 8,
+                title: "Pantai Tropis Air Jernih",
+                location: "Lombok, NTB",
+                category: "beach",
+                url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1920&q=80"
+            },
+            {
+                id: 9,
+                title: "Danau Cermin & Bintang Malam",
+                location: "Danau Ranukumbolo",
+                category: "lake",
+                url: "https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1920&q=80"
+            },
+            {
+                id: 10,
+                title: "Rimbun Bambu & Kabut Pagi",
+                location: "Kyoto / Hutan Bambu",
+                category: "forest",
+                url: "https://images.unsplash.com/photo-1473448912268-2022ce9509d8?auto=format&fit=crop&w=1920&q=80"
+            },
+            {
+                id: 11,
+                title: "Sunset Lembah Merah",
+                location: "Grand Canyon",
+                category: "sunset",
+                url: "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?auto=format&fit=crop&w=1920&q=80"
+            },
+            {
+                id: 12,
+                title: "Aurora Borealis Gemerlap",
+                location: "Tromso, Norwegia",
+                category: "night",
+                url: "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?auto=format&fit=crop&w=1920&q=80"
+            }
+        ];
+
+        /* Inspirational Quotes Database */
+        let quotes = [
+            { id: 1, text: "Alam tidak pernah terburu-buru, namun segala sesuatunya terselesaikan dengan sempurna.", author: "Lao Tzu" },
+            { id: 2, text: "Di setiap jalan dengan alam, seseorang menerima jauh lebih banyak daripada yang dia cari.", author: "John Muir" },
+            { id: 3, text: "Keindahan alam adalah senyuman Sang Pencipta yang memancar ke bumi.", author: "Kutipan Bijak" },
+            { id: 4, text: "Lihatlah jauh ke dalam alam, dan kemudian Anda akan memahami segalanya dengan lebih baik.", author: "Albert Einstein" },
+            { id: 5, text: "Bumi memiliki musik bagi mereka yang mau mendengarkan.", author: "William Shakespeare" },
+            { id: 6, text: "Kedamaian ditemukan saat kita menyatu dan menikmati keheningan alam.", author: "Kata Mutiara" }
+        ];
+
+        /* Custom Uploaded MP3 Songs Storage */
+        let mp3Playlist = [];
+        let currentMp3Audio = new Audio();
+        let currentMp3Index = -1;
+        let isMp3Playing = false;
+        let selectedImgSourceType = 'file';
+        let temporaryImgFileDataUrl = '';
+
+        /* State Variables */
+        let currentFilteredList = [];
+        let currentIndex = 0;
+        let activeLayer = 1; // 1 or 2
+        let autoPlayTimer = null;
+        let autoPlayInterval = 5000;
+        let isPlaying = true;
+        let isFocusMode = false;
+
+        window.onload = function() {
+            // Load saved data from localStorage if exists
+            loadSavedLocalData();
+
+            currentFilteredList = [...landscapes];
+
+            // Preload images for smooth transition
+            preloadImages();
+
+            // Set Initial Background
+            renderCurrentBackground(true);
+
+            // Populate Gallery Drawer
+            renderGalleryDrawer();
+
+            // Start Real-time Clock
+            updateClock();
+            setInterval(updateClock, 1000);
+
+            // Generate initial random quote
+            generateRandomQuote();
+
+            // Render MP3 Playlist UI
+            renderMp3Playlist();
+
+            // Start Auto Slideshow
+            startAutoPlay();
+
+            // Setup audio player end event for auto-next track
+            currentMp3Audio.onended = function() {
+                playNextMp3();
+            };
+        };
+
+        function loadSavedLocalData() {
+            try {
+                const savedQuotes = localStorage.getItem('vistanusa_quotes');
+                if (savedQuotes) quotes = JSON.parse(savedQuotes);
+
+                const savedLandscapes = localStorage.getItem('vistanusa_landscapes');
+                if (savedLandscapes) landscapes = JSON.parse(savedLandscapes);
+            } catch (e) {
+                console.log("LocalStorage Error:", e);
+            }
+        }
+
+        function saveLocalData() {
+            try {
+                localStorage.setItem('vistanusa_quotes', JSON.stringify(quotes));
+                // Only save non-blob base64 images if too large, or save normal images
+                const storableLandscapes = landscapes.filter(l => !l.url.startsWith('blob:'));
+                localStorage.setItem('vistanusa_landscapes', JSON.stringify(storableLandscapes));
+            } catch (e) {
+                console.log("Save error:", e);
+            }
+        }
+
+        function toggleEditModal() {
+            const modal = document.getElementById('edit-modal');
+            modal.classList.toggle('hidden');
+            if (!modal.classList.contains('hidden')) {
+                renderModalQuotesList();
+                renderModalImagesList();
+                renderModalMp3List();
+            }
+        }
+
+        function openEditModalTab(tabName) {
+            const modal = document.getElementById('edit-modal');
+            modal.classList.remove('hidden');
+            switchModalTab(tabName);
+            renderModalQuotesList();
+            renderModalImagesList();
+            renderModalMp3List();
+        }
+
+        function switchModalTab(tab) {
+            const tabs = ['quotes', 'images', 'mp3'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`modal-tab-${t}`);
+                const sec = document.getElementById(`modal-section-${t}`);
+                if (t === tab) {
+                    btn.className = "pb-2.5 border-b-2 border-emerald-400 text-emerald-300 font-semibold flex items-center space-x-2";
+                    sec.classList.remove('hidden');
+                } else {
+                    btn.className = "pb-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-2";
+                    sec.classList.add('hidden');
+                }
+            });
+        }
+
+        /* 1. Quotes Edit Management Functions */
+        function handleAddNewQuote(e) {
+            e.preventDefault();
+            const text = document.getElementById('input-quote-text').value.trim();
+            const author = document.getElementById('input-quote-author').value.trim();
+            if (!text || !author) return;
+
+            const newQuote = {
+                id: Date.now(),
+                text: text,
+                author: author
+            };
+
+            quotes.unshift(newQuote);
+            saveLocalData();
+
+            document.getElementById('input-quote-text').value = '';
+            document.getElementById('input-quote-author').value = '';
+
+            renderModalQuotesList();
+            generateRandomQuote();
+        }
+
+        function deleteQuote(id) {
+            if (quotes.length <= 1) {
+                alert("Minimal harus ada 1 kutipan!");
+                return;
+            }
+            quotes = quotes.filter(q => q.id !== id);
+            saveLocalData();
+            renderModalQuotesList();
+            generateRandomQuote();
+        }
+
+        function renderModalQuotesList() {
+            const container = document.getElementById('quotes-list-container');
+            container.innerHTML = '';
+
+            quotes.forEach((q) => {
+                const item = document.createElement('div');
+                item.className = "p-3 rounded-xl glass-panel bg-slate-900/60 border border-white/10 flex items-start justify-between space-x-3";
+                item.innerHTML = `
+                    <div class="text-xs space-y-1">
+                        <p class="text-slate-200 italic font-serif">"${q.text}"</p>
+                        <p class="text-emerald-400 font-medium">— ${q.author}</p>
+                    </div>
+                    <button onclick="deleteQuote(${q.id})" title="Hapus Kutipan" class="text-rose-400 hover:text-rose-300 p-1 shrink-0">
+                        <i class="fa-solid fa-trash text-xs"></i>
+                    </button>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        /* 2. Landscape Images Edit Management Functions */
+        function setImageSourceType(type) {
+            selectedImgSourceType = type;
+            const fileBtn = document.getElementById('img-source-file-btn');
+            const urlBtn = document.getElementById('img-source-url-btn');
+            const fileInput = document.getElementById('img-file-input-wrapper');
+            const urlInput = document.getElementById('img-url-input-wrapper');
+
+            if (type === 'file') {
+                fileBtn.className = "px-3 py-1.5 rounded-lg bg-emerald-500/30 text-emerald-300 font-medium";
+                urlBtn.className = "px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400 font-medium";
+                fileInput.classList.remove('hidden');
+                urlInput.classList.add('hidden');
+            } else {
+                urlBtn.className = "px-3 py-1.5 rounded-lg bg-emerald-500/30 text-emerald-300 font-medium";
+                fileBtn.className = "px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400 font-medium";
+                urlInput.classList.remove('hidden');
+                fileInput.classList.add('hidden');
+            }
+        }
+
+        function previewSelectedImageFile(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    temporaryImgFileDataUrl = evt.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function handleAddNewImage(e) {
+            e.preventDefault();
+            const title = document.getElementById('input-img-title').value.trim();
+            const location = document.getElementById('input-img-location').value.trim();
+            const category = document.getElementById('input-img-category').value;
+            let finalUrl = '';
+
+            if (selectedImgSourceType === 'file') {
+                if (!temporaryImgFileDataUrl) {
+                    alert("Silakan pilih file gambar terlebih dahulu!");
+                    return;
+                }
+                finalUrl = temporaryImgFileDataUrl;
+            } else {
+                finalUrl = document.getElementById('input-img-url').value.trim();
+                if (!finalUrl) {
+                    alert("Silakan masukkan URL gambar!");
+                    return;
+                }
+            }
+
+            const newImg = {
+                id: Date.now(),
+                title: title,
+                location: location,
+                category: category,
+                url: finalUrl
+            };
+
+            landscapes.unshift(newImg);
+            currentFilteredList = [...landscapes];
+            saveLocalData();
+
+            // Reset inputs
+            document.getElementById('input-img-title').value = '';
+            document.getElementById('input-img-location').value = '';
+            document.getElementById('input-img-url').value = '';
+            document.getElementById('input-img-file').value = '';
+            temporaryImgFileDataUrl = '';
+
+            renderModalImagesList();
+            renderGalleryDrawer();
+            currentIndex = 0;
+            renderCurrentBackground();
+        }
+
+        function deleteImage(id) {
+            if (landscapes.length <= 1) {
+                alert("Minimal harus ada 1 gambar pemandangan!");
+                return;
+            }
+            landscapes = landscapes.filter(img => img.id !== id);
+            currentFilteredList = [...landscapes];
+            saveLocalData();
+
+            renderModalImagesList();
+            renderGalleryDrawer();
+            if (currentIndex >= currentFilteredList.length) {
+                currentIndex = 0;
+            }
+            renderCurrentBackground();
+        }
+
+        function renderModalImagesList() {
+            const container = document.getElementById('images-list-container');
+            container.innerHTML = '';
+
+            landscapes.forEach((img) => {
+                const card = document.createElement('div');
+                card.className = "p-2 rounded-xl glass-panel bg-slate-900/60 border border-white/10 flex items-center space-x-3";
+                card.innerHTML = `
+                    <img src="${img.url}" class="w-12 h-12 rounded-lg object-cover" alt="${img.title}">
+                    <div class="overflow-hidden flex-grow text-xs">
+                        <p class="text-white font-semibold truncate">${img.title}</p>
+                        <p class="text-slate-400 text-[10px] truncate">${img.location}</p>
+                        <span class="inline-block px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[9px] uppercase font-bold mt-0.5">${img.category}</span>
+                    </div>
+                    <button onclick="deleteImage(${img.id})" title="Hapus Gambar" class="text-rose-400 hover:text-rose-300 p-1">
+                        <i class="fa-solid fa-trash text-xs"></i>
+                    </button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        /* 3. Custom MP3 Audio Management Functions */
+        function handleMp3FilesUpload(e) {
+            const files = e.target.files;
+            if (!files || files.length === 0) return;
+
+            Array.from(files).forEach((file) => {
+                const objectUrl = URL.createObjectURL(file);
+                const song = {
+                    id: Date.now() + Math.random(),
+                    name: file.name.replace(/\.[^/.]+$/, ""),
+                    size: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
+                    url: objectUrl
+                };
+                mp3Playlist.push(song);
+            });
+
+            renderMp3Playlist();
+            renderModalMp3List();
+
+            // Auto select first song if none active
+            if (currentMp3Index === -1 && mp3Playlist.length > 0) {
+                selectMp3Track(0);
+            }
+        }
+
+        function switchAudioTab(tab) {
+            const ambContainer = document.getElementById('ambient-audio-container');
+            const mp3Container = document.getElementById('mp3-audio-container');
+            const ambTabBtn = document.getElementById('tab-btn-ambient');
+            const mp3TabBtn = document.getElementById('tab-btn-mp3');
+
+            if (tab === 'ambient') {
+                ambContainer.classList.remove('hidden');
+                mp3Container.classList.add('hidden');
+                ambTabBtn.className = "pb-2 px-3 border-b-2 border-emerald-400 text-emerald-300 font-semibold w-1/2 text-center";
+                mp3TabBtn.className = "pb-2 px-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200 w-1/2 text-center";
+            } else {
+                ambContainer.classList.add('hidden');
+                mp3Container.classList.remove('hidden');
+                mp3TabBtn.className = "pb-2 px-3 border-b-2 border-emerald-400 text-emerald-300 font-semibold w-1/2 text-center";
+                ambTabBtn.className = "pb-2 px-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200 w-1/2 text-center";
+            }
+        }
+
+        function selectMp3Track(index) {
+            if (index < 0 || index >= mp3Playlist.length) return;
+            currentMp3Index = index;
+            const track = mp3Playlist[currentMp3Index];
+
+            currentMp3Audio.src = track.url;
+            document.getElementById('mp3-title-display').innerText = track.name;
+            document.getElementById('mp3-status-display').innerText = `Siap Diputar • ${track.size}`;
+
+            playMp3Audio();
+            renderMp3Playlist();
+            renderModalMp3List();
+        }
+
+        function playMp3Audio() {
+            if (currentMp3Index === -1 && mp3Playlist.length > 0) {
+                selectMp3Track(0);
+                return;
+            }
+            if (!currentMp3Audio.src) return;
+
+            // Stop synthesized ambient audio if playing
+            stopAllAudio();
+
+            currentMp3Audio.play();
+            isMp3Playing = true;
+            document.getElementById('mp3-play-icon').className = "fa-solid fa-pause text-xs";
+            document.getElementById('mp3-playing-disc').classList.add('animate-spin');
+            document.getElementById('mp3-status-display').innerText = "Sedang Memutar...";
+            
+            // Update sound icon in header
+            document.getElementById('sound-icon').className = 'fa-solid fa-compact-disc text-emerald-400 animate-spin';
+        }
+
+        function pauseMp3Audio() {
+            currentMp3Audio.pause();
+            isMp3Playing = false;
+            document.getElementById('mp3-play-icon').className = "fa-solid fa-play text-xs";
+            document.getElementById('mp3-playing-disc').classList.remove('animate-spin');
+            document.getElementById('mp3-status-display').innerText = "Di-jeda";
+
+            document.getElementById('sound-icon').className = 'fa-solid fa-volume-xmark text-slate-400';
+        }
+
+        function togglePlayMp3() {
+            if (isMp3Playing) {
+                pauseMp3Audio();
+            } else {
+                playMp3Audio();
+            }
+        }
+
+        function playNextMp3() {
+            if (mp3Playlist.length === 0) return;
+            const nextIdx = (currentMp3Index + 1) % mp3Playlist.length;
+            selectMp3Track(nextIdx);
+        }
+
+        function playPrevMp3() {
+            if (mp3Playlist.length === 0) return;
+            const prevIdx = (currentMp3Index - 1 + mp3Playlist.length) % mp3Playlist.length;
+            selectMp3Track(prevIdx);
+        }
+
+        function changeMp3Volume(val) {
+            currentMp3Audio.volume = parseFloat(val) / 100;
+        }
+
+        function deleteMp3Track(index) {
+            if (index === currentMp3Index) {
+                pauseMp3Audio();
+                currentMp3Audio.src = '';
+                currentMp3Index = -1;
+                document.getElementById('mp3-title-display').innerText = 'Belum ada lagu diputar';
+                document.getElementById('mp3-status-display').innerText = 'Silakan pilih lagu';
+            }
+            mp3Playlist.splice(index, 1);
+            if (currentMp3Index > index) currentMp3Index--;
+
+            renderMp3Playlist();
+            renderModalMp3List();
+        }
+
+        function renderMp3Playlist() {
+            const playlistContainer = document.getElementById('mp3-playlist');
+            if (!playlistContainer) return;
+            playlistContainer.innerHTML = '';
+
+            if (mp3Playlist.length === 0) {
+                playlistContainer.innerHTML = `<p class="text-[11px] text-slate-400 italic text-center py-2">Belum ada file MP3 yang diunggah.</p>`;
+                return;
+            }
+
+            mp3Playlist.forEach((track, idx) => {
+                const isActive = idx === currentMp3Index;
+                const item = document.createElement('div');
+                item.className = `p-2 rounded-xl flex items-center justify-between text-xs cursor-pointer transition-colors ${isActive ? 'bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/30' : 'bg-slate-900/40 text-slate-300 hover:bg-slate-800/60'}`;
+                item.onclick = () => selectMp3Track(idx);
+                item.innerHTML = `
+                    <div class="flex items-center space-x-2 truncate">
+                        <i class="fa-solid ${isActive && isMp3Playing ? 'fa-volume-high text-emerald-400 animate-pulse' : 'fa-music text-slate-400'} text-[10px]"></i>
+                        <span class="truncate text-[11px]">${track.name}</span>
+                    </div>
+                    <span class="text-[9px] text-slate-400 shrink-0 ml-2">${track.size}</span>
+                `;
+                playlistContainer.appendChild(item);
+            });
+        }
+
+        function renderModalMp3List() {
+            const container = document.getElementById('mp3-modal-list-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            if (mp3Playlist.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 italic text-center py-3">Belum ada file MP3 tersimpan.</p>`;
+                return;
+            }
+
+            mp3Playlist.forEach((track, idx) => {
+                const item = document.createElement('div');
+                item.className = "p-3 rounded-xl glass-panel bg-slate-900/60 border border-white/10 flex items-center justify-between space-x-3 text-xs";
+                item.innerHTML = `
+                    <div class="flex items-center space-x-3 overflow-hidden">
+                        <i class="fa-solid fa-file-audio text-emerald-400 text-lg shrink-0"></i>
+                        <div class="overflow-hidden">
+                            <p class="text-white font-semibold truncate">${track.name}</p>
+                            <p class="text-slate-400 text-[10px]">${track.size}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2 shrink-0">
+                        <button onclick="selectMp3Track(${idx})" title="Putar" class="text-emerald-400 hover:text-emerald-300 p-1">
+                            <i class="fa-solid fa-play"></i>
+                        </button>
+                        <button onclick="deleteMp3Track(${idx})" title="Hapus" class="text-rose-400 hover:text-rose-300 p-1">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        /* Preload images function */
+        function preloadImages() {
+            landscapes.forEach(item => {
+                const img = new Image();
+                img.src = item.url;
+            });
+        }
+
+        function renderCurrentBackground(isFirstLoad = false) {
+            if (currentFilteredList.length === 0) return;
+
+            const item = currentFilteredList[currentIndex];
+            const nextLayerNum = activeLayer === 1 ? 2 : 1;
+            const currentLayerEl = document.getElementById(`bg-layer-${activeLayer}`);
+            const nextLayerEl = document.getElementById(`bg-layer-${nextLayerNum}`);
+
+            // Update details
+            document.getElementById('image-title').innerText = item.title;
+            document.getElementById('image-location').innerHTML = `<i class="fa-solid fa-location-dot text-emerald-400 mr-1"></i>${item.location}`;
+
+            if (isFirstLoad) {
+                currentLayerEl.style.backgroundImage = `url('${item.url}')`;
+                currentLayerEl.classList.add('zoom-effect');
+                return;
+            }
+
+            // Set new image to back layer
+            nextLayerEl.style.backgroundImage = `url('${item.url}')`;
+            nextLayerEl.classList.remove('zoom-effect');
+
+            // Trigger crossfade opacity
+            nextLayerEl.classList.remove('opacity-0');
+            nextLayerEl.classList.add('opacity-100', 'zoom-effect');
+
+            currentLayerEl.classList.remove('opacity-100', 'zoom-effect');
+            currentLayerEl.classList.add('opacity-0');
+
+            // Switch active layer pointer
+            activeLayer = nextLayerNum;
+
+            // Highlight thumbnail in drawer
+            highlightActiveThumbnail();
+        }
+
+        function nextImage() {
+            if (currentFilteredList.length === 0) return;
+            currentIndex = (currentIndex + 1) % currentFilteredList.length;
+            renderCurrentBackground();
+            resetAutoPlay();
+        }
+
+        function prevImage() {
+            if (currentFilteredList.length === 0) return;
+            currentIndex = (currentIndex - 1 + currentFilteredList.length) % currentFilteredList.length;
+            renderCurrentBackground();
+            resetAutoPlay();
+        }
+
+        /* Category Filter Switcher */
+        function setCategory(cat) {
+            // Update active pill UI
+            document.querySelectorAll('.cat-btn').forEach(btn => {
+                btn.classList.remove('bg-emerald-500/40', 'border-emerald-400', 'text-white');
+                btn.classList.add('text-slate-200');
+            });
+
+            const activeBtn = document.querySelector(`.cat-btn[data-cat="${cat}"]`);
+            if (activeBtn) {
+                activeBtn.classList.add('bg-emerald-500/40', 'border-emerald-400', 'text-white');
+            }
+
+            if (cat === 'all') {
+                currentFilteredList = [...landscapes];
+            } else {
+                currentFilteredList = landscapes.filter(item => item.category === cat);
+            }
+
+            currentIndex = 0;
+            renderCurrentBackground();
+            renderGalleryDrawer();
+            resetAutoPlay();
+        }
+
+        /* Slideshow Auto Play Control */
+        function startAutoPlay() {
+            if (autoPlayTimer) clearInterval(autoPlayTimer);
+            isPlaying = true;
+            document.getElementById('play-icon').className = 'fa-solid fa-pause text-sm';
+            autoPlayTimer = setInterval(nextImage, autoPlayInterval);
+        }
+
+        function stopAutoPlay() {
+            isPlaying = false;
+            document.getElementById('play-icon').className = 'fa-solid fa-play text-sm';
+            if (autoPlayTimer) clearInterval(autoPlayTimer);
+        }
+
+        function toggleAutoPlay() {
+            if (isPlaying) {
+                stopAutoPlay();
+            } else {
+                startAutoPlay();
+            }
+        }
+
+        function resetAutoPlay() {
+            if (isPlaying) {
+                startAutoPlay();
+            }
+        }
+
+        function changeInterval(ms) {
+            autoPlayInterval = parseInt(ms);
+            resetAutoPlay();
+        }
+
+        function updateClock() {
+            const now = new Date();
+            
+            // Format time HH:MM:SS
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('clock-display').innerText = `${hours}:${minutes}:${seconds}`;
+
+            // Format date in Indonesian
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const dateStr = now.toLocaleDateString('id-ID', options);
+            document.getElementById('date-display').innerText = dateStr;
+
+            // Dynamic greeting
+            const hourNum = now.getHours();
+            let greeting = "Selamat Datang";
+            if (hourNum >= 4 && hourNum < 11) {
+                greeting = "Selamat Pagi, Penjelajah";
+            } else if (hourNum >= 11 && hourNum < 15) {
+                greeting = "Selamat Siang, Indahnya Alam";
+            } else if (hourNum >= 15 && hourNum < 18) {
+                greeting = "Selamat Sore, Nikmati Senja";
+            } else {
+                greeting = "Selamat Malam, Istirahatlah";
+            }
+            document.getElementById('greeting-text').innerText = greeting;
+        }
+
+        function handleSearch(e) {
+            e.preventDefault();
+            const query = document.getElementById('search-input').value.trim();
+            const engine = document.getElementById('search-engine').value;
+            if (!query) return;
+
+            let url = '';
+            if (engine === 'google') url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+            else if (engine === 'youtube') url = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+            else if (engine === 'wikipedia') url = `https://id.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(query)}`;
+            else if (engine === 'bing') url = `https://www.bing.com/search?q=${encodeURIComponent(query)}`;
+
+            window.open(url, '_blank');
+        }
+
+        function generateRandomQuote() {
+            const randomIndex = Math.floor(Math.random() * quotes.length);
+            const q = quotes[randomIndex];
+            document.getElementById('quote-text').innerText = `"${q.text}"`;
+            document.getElementById('quote-author').innerText = `— ${q.author}`;
+        }
+
+        function toggleFocusMode() {
+            isFocusMode = !isFocusMode;
+            const uiElements = document.querySelectorAll('.ui-element');
+            const restoreBtn = document.getElementById('btn-restore-ui');
+
+            uiElements.forEach(el => {
+                if (isFocusMode) {
+                    el.classList.add('ui-hidden');
+                } else {
+                    el.classList.remove('ui-hidden');
+                }
+            });
+
+            if (isFocusMode) {
+                restoreBtn.classList.remove('opacity-0', 'pointer-events-none');
+                restoreBtn.classList.add('opacity-100');
+            } else {
+                restoreBtn.classList.add('opacity-0', 'pointer-events-none');
+                restoreBtn.classList.remove('opacity-100');
+            }
+        }
+
+        function toggleGalleryDrawer() {
+            const drawer = document.getElementById('gallery-drawer');
+            drawer.classList.toggle('translate-x-full');
+        }
+
+        function renderGalleryDrawer() {
+            const grid = document.getElementById('gallery-grid');
+            grid.innerHTML = '';
+
+            currentFilteredList.forEach((item, idx) => {
+                const card = document.createElement('div');
+                card.className = `relative h-24 rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${idx === currentIndex ? 'border-emerald-400 scale-[1.02]' : 'border-transparent opacity-80 hover:opacity-100'}`;
+                card.onclick = () => {
+                    currentIndex = idx;
+                    renderCurrentBackground();
+                    resetAutoPlay();
+                };
+
+                card.innerHTML = `
+                    <img src="${item.url}" class="w-full h-full object-cover" alt="${item.title}" loading="lazy">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent p-2 flex flex-col justify-end">
+                        <span class="text-[10px] font-semibold text-white leading-tight truncate">${item.title}</span>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function highlightActiveThumbnail() {
+            const grid = document.getElementById('gallery-grid');
+            if (!grid) return;
+            const cards = grid.children;
+            for (let i = 0; i < cards.length; i++) {
+                if (i === currentIndex) {
+                    cards[i].className = cards[i].className.replace('border-transparent opacity-80', 'border-emerald-400 scale-[1.02]');
+                } else {
+                    cards[i].className = cards[i].className.replace('border-emerald-400 scale-[1.02]', 'border-transparent opacity-80');
+                }
+            }
+        }
+
+        function toggleAudioPanel() {
+            const panel = document.getElementById('audio-panel');
+            panel.classList.toggle('hidden');
+        }
+
+        /* Web Audio API Synthesizer (No external audio files required!) */
+        let audioCtx = null;
+        const soundNodes = {
+            rain: null,
+            waves: null,
+            wind: null,
+            fire: null
+        };
+        const gainNodes = {};
+
+        function initAudioContext() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function updateAudioVolume(type, val) {
+            initAudioContext();
+            const vol = parseFloat(val) / 100;
+            const label = document.getElementById(`${type}-vol-label`);
+            
+            if (label) {
+                label.innerText = val > 0 ? `${val}%` : 'Mati';
+            }
+
+            // Update main audio icon
+            const isAnyActive = ['rain', 'waves', 'wind', 'fire'].some(t => {
+                const el = document.getElementById(`vol-${t}`);
+                return el && parseInt(el.value) > 0;
+            });
+            const soundIcon = document.getElementById('sound-icon');
+            if (soundIcon) {
+                soundIcon.className = isAnyActive ? 'fa-solid fa-volume-high text-emerald-400' : 'fa-solid fa-volume-xmark text-slate-400';
+            }
+
+            if (vol === 0) {
+                if (soundNodes[type]) {
+                    gainNodes[type].gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+                }
+                return;
+            }
+
+            if (!soundNodes[type]) {
+                createSoundGenerator(type);
+            }
+
+            if (gainNodes[type]) {
+                gainNodes[type].gain.linearRampToValueAtTime(vol * 0.3, audioCtx.currentTime + 0.2);
+            }
+        }
+
+        function createSoundGenerator(type) {
+            const bufferSize = audioCtx.sampleRate * 2;
+            const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+
+            for (let i = 0; i < bufferSize; i++) {
+                output[i] = Math.random() * 2 - 1;
+            }
+
+            const whiteNoise = audioCtx.createBufferSource();
+            whiteNoise.buffer = noiseBuffer;
+            whiteNoise.loop = true;
+
+            const gainNode = audioCtx.createGain();
+            gainNode.gain.value = 0;
+
+            if (type === 'rain') {
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 1000;
+                whiteNoise.connect(filter);
+                filter.connect(gainNode);
+            } else if (type === 'waves') {
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 400;
+                
+                // LFO to simulate wave oscillation
+                const lfo = audioCtx.createOscillator();
+                lfo.frequency.value = 0.15; // wave speed
+                const lfoGain = audioCtx.createGain();
+                lfoGain.gain.value = 300;
+                lfo.connect(lfoGain);
+                lfoGain.connect(filter.frequency);
+                lfo.start();
+
+                whiteNoise.connect(filter);
+                filter.connect(gainNode);
+            } else if (type === 'wind') {
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 250;
+                filter.Q.value = 3.0;
+
+                const lfo = audioCtx.createOscillator();
+                lfo.frequency.value = 0.2;
+                const lfoGain = audioCtx.createGain();
+                lfoGain.gain.value = 150;
+                lfo.connect(lfoGain);
+                lfoGain.connect(filter.frequency);
+                lfo.start();
+
+                whiteNoise.connect(filter);
+                filter.connect(gainNode);
+            } else if (type === 'fire') {
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 800;
+                whiteNoise.connect(filter);
+                filter.connect(gainNode);
+            }
+
+            gainNode.connect(audioCtx.destination);
+            whiteNoise.start();
+
+            soundNodes[type] = whiteNoise;
+            gainNodes[type] = gainNode;
+        }
+
+        function stopAllAudio() {
+            // Pause MP3 player if active
+            if (isMp3Playing) {
+                pauseMp3Audio();
+            }
+
+            ['rain', 'waves', 'wind', 'fire'].forEach(t => {
+                const input = document.getElementById(`vol-${t}`);
+                if (input) {
+                    input.value = 0;
+                    updateAudioVolume(t, 0);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
